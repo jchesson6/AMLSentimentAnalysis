@@ -3,6 +3,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 import seaborn as sns
+import functions
 
 import nltk
 from nltk.corpus import stopwords
@@ -20,25 +21,18 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
 from sklearn.model_selection import learning_curve
 
+
+
 # DATA LOADING AND CLEANING
-
-
-def foo_bar(x):
-    try:
-        return BeautifulSoup(open("Tweets.csv"), 'lxml').text
-    except:
-        return x
-
-
-data = pd.read_csv("Tweets.csv")
+data = pd.read_csv("inputs/Tweets.csv")
 data_clean = data.copy()
 data_clean = data_clean[data_clean['airline_sentiment_confidence'] > 0.65]
 data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 1 if x == 'negative' else 0)
 
-data_clean['text_clean'] = data_clean['text'].apply(foo_bar)
-# data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, "lxml").text)
 
-data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 1 if x == 'negative' else 0)
+# data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, "lxml").text)
+data_clean['text_clean'] = data_clean['text'].apply(foo_bar)
+# data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 1 if x == 'negative' else 0)
 
 data_clean = data_clean.loc[:, ['text_clean', 'sentiment']]
 
