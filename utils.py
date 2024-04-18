@@ -1,19 +1,129 @@
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup
 import string
 import nltk
 from nltk.stem import PorterStemmer
-from nltk.corpus import stopwords
+from nltk.stem import SnowballStemmer
+from nltk.tokenize import TweetTokenizer
 import math
 from collections import defaultdict
+from sklearn.metrics import make_scorer, accuracy_score, f1_score
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
+from sklearn.model_selection import learning_curve
+
+menu_map = {'SVM': 1, 'NB': 2, 'Both': 3, 'Exit': 4}
+input_map = {'inputs/Tweets.csv': 1, 'inputs/twcs.csv': 2, 'inputs/IMDBDataset.csv': 3}
 
 
-def soup(x):
-    try:
-        return BeautifulSoup(open(x), 'lxml').text
-        # return BeautifulSoup(open("inputs/Tweets.csv"), 'lxml').text
-    except:
-        return x
+def get_key_from_value(d, val):
+    keys = [k for k, v in d.items() if v == val]
+    if keys:
+        return keys[0]
+    return None
+
+
+def preproc_data(data_file, conf_thresh):
+    # Read in data and create a copy
+    data = pd.read_csv(data_file)
+    data_copy = data.copy()
+    # See which dataset is being preprocessed
+    match data_file:
+        case 'inputs/Tweets.csv':
+            print("Preprocessing Airline Tweets...")
+            data_clean = data[data['airline_sentiment_confidence'] > conf_thresh]
+            data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
+            data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+            data_slice = data_clean.loc[:, ['text_clean', 'sentiment']]
+            return data_slice
+        
+        case 'inputs/twcs.csv':
+            print("Preprocessing General Customer Service Tweets...")
+        
+        case 'inputs/IMDBDataset.csv':
+            print("Preprocessing IMDB Reviews...")
+        
+        case _:
+            print("No dataset preprocessed")
+
+
+
+
+def tokenize(text):
+    tknzr = TweetTokenizer()
+    return tknzr.tokenize(text)
+
+
+def stem(doc):
+    return (SnowballStemmer.stem(w) for w in analyzer(doc))
+
+
+
+def report_results(model, X, y):
+    pred_proba = model.predict_proba(X)[:, 1]
+    pred = model.predict(X)
+    auc = roc_auc_score(y, pred_proba)
+    acc = accuracy_score(y, pred)
+    f1 = f1_score(y, pred)
+    prec = precision_score(y, pred)
+    rec = recall_score(y, pred)
+    result = {'auc': auc, 'f1': f1, 'acc': acc, 'precision': prec, 'recall': rec}
+    return result
+
+
+def get_roc_curve(model, X, y):
+    pred_proba = model.predict_proba(X)[:, 1]
+    fpr, tpr, _ = roc_curve(y, pred_proba)
+    return fpr, tpr
+
+
+def plot_roc_curve(roc):
+    fpr, tpr = roc
+    plt.figure(figsize=(14, 8))
+    plt.plot(fpr, tpr, color="red")
+    plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Roc curve')
+    return plt
+
+
+def plot_learning_curve(X, y, train_sizes, train_scores, test_scores, title='', ylim=None, figsize=(14,8)):
+
+    plt.figure(figsize=figsize)
+    plt.title(title)
+    if ylim is not None:
+        plt.ylim(*ylim)
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    plt.grid()
+
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+
+    plt.legend(loc="lower right")
+    return plt
+
+
+
+
+
 
 
 def split_data_by_sentiment(data, sentiment):
@@ -30,7 +140,11 @@ def split_data_by_sentiment(data, sentiment):
     return data[data['sentiment'] == sentiment]['text_clean'].tolist()
 
 
-def preprocess_tweet(tweet):
+
+    
+
+
+def preprocess_tweet(tweet, datafile):
     # Convert the tweet to lowercase
     tweet = tweet.lower()
 

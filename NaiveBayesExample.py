@@ -5,7 +5,7 @@ import nltk
 from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 import math
-import functions
+import utils
 
 # nltk.download('punkt')
 # nltk.download('stopwords')
