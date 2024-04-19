@@ -68,18 +68,17 @@ def run_svm(data_file): #dataset should be full file
     utils.report_results(grid_svm.best_estimator_, X_test, y_test)
 
     roc_svm = utils.get_roc_curve(grid_svm.best_estimator_, X_test, y_test)
-    utils.plot_roc_curve(roc_svm)
-    plt.show()
+    roc_plot = utils.plot_roc_curve(roc_svm)
 
     train_sizes, train_scores, test_scores = \
         learning_curve(grid_svm.best_estimator_, X_train, y_train, cv=5, n_jobs=-1,
                        scoring="roc_auc", train_sizes=np.linspace(.1, 1.0, 10), random_state=1)
-    utils.plot_learning_curve(X_train, y_train, train_sizes,
+    learning_plot = utils.plot_learning_curve(X_train, y_train, train_sizes,
                         train_scores, test_scores, ylim=(0.7, 1.01), figsize=(14, 6))
     plt.show()
 
     # EXAMPLES
-
+    print("EXAMPLES")
     print("TEXT -> PREDICTION")
     print("flying with @united is always a great experience -> {0}".
           format(grid_svm.predict(["flying with @united is always a great experience"])))

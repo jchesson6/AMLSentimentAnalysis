@@ -80,6 +80,7 @@ def get_roc_curve(model, X, y):
 
 
 def plot_roc_curve(roc):
+    print("Plotting ROC Curve...")
     fpr, tpr = roc
     plt.figure(figsize=(14, 8))
     plt.plot(fpr, tpr, color="red")
@@ -93,7 +94,7 @@ def plot_roc_curve(roc):
 
 
 def plot_learning_curve(X, y, train_sizes, train_scores, test_scores, title='', ylim=None, figsize=(14,8)):
-
+    print("Plotting Learning Curve...")
     plt.figure(figsize=figsize)
     plt.title(title)
     if ylim is not None:
