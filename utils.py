@@ -1,21 +1,23 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 import string
 import nltk
 from nltk.stem import PorterStemmer
 from nltk.stem import SnowballStemmer
-from nltk.tokenize import TweetTokenizer
+from nltk.tokenize import TweetTokenizer, RegexpTokenizer
 import math
 from collections import defaultdict
-from sklearn.metrics import make_scorer, accuracy_score, f1_score
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import make_scorer, accuracy_score, f1_score, roc_curve, auc
 from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
 from sklearn.model_selection import learning_curve
+import warnings
 
-menu_map = {'SVM': 1, 'NB': 2, 'Both': 3, 'Exit': 4}
-input_map = {'inputs/Tweets.csv': 1, 'inputs/twcs.csv': 2, 'inputs/IMDBDataset.csv': 3}
+dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "Sample of General Customer Service Tweets": 3,
+                "General Customer Service Tweets": 4}
+input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/sample.csv': 3, 'inputs/twcs.csv': 4 }
+warnings.filterwarnings('ignore', category=MarkupResemblesLocatorWarning)
 
 
 def get_key_from_value(d, val):
@@ -25,40 +27,53 @@ def get_key_from_value(d, val):
     return None
 
 
-def preproc_data(data_file, conf_thresh):
-    # Read in data and create a copy
-    data = pd.read_csv(data_file)
-    data_copy = data.copy()
-    # See which dataset is being preprocessed
-    match data_file:
-        case 'inputs/Tweets.csv':
-            print("Preprocessing Airline Tweets...")
-            data_clean = data[data['airline_sentiment_confidence'] > conf_thresh]
-            data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
-            data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
-            data_slice = data_clean.loc[:, ['text_clean', 'sentiment']]
-            return data_slice
-        
-        case 'inputs/twcs.csv':
-            print("Preprocessing General Customer Service Tweets...")
-        
-        case 'inputs/IMDBDataset.csv':
-            print("Preprocessing IMDB Reviews...")
-        
-        case _:
-            print("No dataset preprocessed")
+
+def preproc_data(data_in, dataset_nm):
+    
+    # Read in data
+    data = pd.read_csv(data_in)
+    data_clean = data.copy()
+    print("Preprocessing {0}...".format(dataset_nm))
+
+    if data_in == 'inputs/Tweets.csv':
+        data_clean = data[data['airline_sentiment_confidence'] > 0.65]  # Confidence threshold can be changed
+        data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
+        data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+
+    elif data_in == 'inputs/IMDBDataset.csv':
+        data_clean['text_clean'] = data_clean['review'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
+        data_clean['sentiment'] = data_clean['sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+
+    elif data_in == 'inputs/sample.csv' or data_in == 'inputs/twcs.csv': # same datasets
+        print("Not ready")
+        return None
+
+    else:
+        print("No dataset preprocessed")
+        return None
+
+
+    return data_clean.loc[:,['text_clean', 'sentiment']] # return the same 2-column dataframe for each set
 
 
 
 
-def tokenize(text):
-    tknzr = TweetTokenizer()
+
+
+
+
+def tokenizeTweet(text):
+    tknzr = TweetTokenizer(strip_handles=True, reduce_len=True,)
+    return tknzr.tokenize(text)
+
+
+def tokenizeReview(text):
+    tknzr = RegexpTokenizer(r'[a-zA-Z0-9]+')
     return tknzr.tokenize(text)
 
 
 def stem(doc):
     return (SnowballStemmer.stem(w) for w in analyzer(doc))
-
 
 
 def report_results(model, X, y):
@@ -70,7 +85,7 @@ def report_results(model, X, y):
     prec = precision_score(y, pred)
     rec = recall_score(y, pred)
     result = {'auc': auc, 'f1': f1, 'acc': acc, 'precision': prec, 'recall': rec}
-    return result
+    print(result)
 
 
 def get_roc_curve(model, X, y):
@@ -79,7 +94,7 @@ def get_roc_curve(model, X, y):
     return fpr, tpr
 
 
-def plot_roc_curve(roc):
+def plot_roc_curve(roc, dataset_nm):
     print("Plotting ROC Curve...")
     fpr, tpr = roc
     plt.figure(figsize=(14, 8))
@@ -89,7 +104,7 @@ def plot_roc_curve(roc):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Roc curve')
+    plt.title('ROC Curve for %s' %dataset_nm )
     return plt
 
 
