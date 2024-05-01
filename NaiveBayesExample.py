@@ -5,43 +5,40 @@ import nltk
 from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 import math
-import utils
 
 # nltk.download('punkt')
 # nltk.download('stopwords')
+from utils import split_data_by_sentiment, calculate_word_counts, classify_tweet_with_scores, calculate_likelihood, calculate_log_prior
 
 # Assuming 'Tweets.csv' is located in the specified path
 data = pd.read_csv("inputs/Tweets.csv")
 
 # Copy the original DataFrame to ensure the original data is not modified
-data_copy = data.copy()
+data_clean = data[data['airline_sentiment_confidence'] > 0.65].copy()
+test_data = data[data['airline_sentiment_confidence'] <= 0.65].copy()
 
-# Filter out rows with confidence less than or equal to 0.65
-data_clean = data_copy[data_copy['airline_sentiment_confidence'] > 0.65]
-test_data = data_copy[data_copy['airline_sentiment_confidence'] <= 0.65]
-
-# Map string labels to numerical values
-sentiment_mapping = {'negative': 0, 'neutral': 0.5, 'positive': 1}
-data_clean['sentiment'] = data_clean['airline_sentiment'].map(sentiment_mapping)
-test_data['sentiment'] = test_data['airline_sentiment'].map(sentiment_mapping)
+# Map string labels to textual values
+sentiment_mapping = {'negative': 'negative', 'neutral': 'neutral', 'positive': 'positive'}
+data_clean.loc[:, 'sentiment'] = data_clean['airline_sentiment'].map(sentiment_mapping)
+test_data.loc[:, 'sentiment'] = test_data['airline_sentiment'].map(sentiment_mapping)
 
 # Clean the text using BeautifulSoup and store it in a new column 'text_clean'
 # data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(open("inputs/Tweets.csv"), "lxml").text)
-data_clean['text_clean'] = data_clean['text'].apply(foo_bar)
-test_data['text_clean'] = test_data['text'].apply(foo_bar)
+data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, "lxml").get_text()) # Try get_text?
+test_data['text_clean'] = test_data['text'].apply(lambda x: BeautifulSoup(x, "lxml").get_text())
 
 # Select only the necessary columns 'text_clean' and 'sentiment'
-data_clean = data_clean.loc[:, ['text_clean', 'sentiment']]
-test_data = test_data.loc[:, ['text_clean', 'sentiment']]
+data_clean = data_clean[['text_clean', 'sentiment']]
+test_data = test_data[['text_clean', 'sentiment']]
 
 # Display the first few rows of the cleaned DataFrame
 print(data_clean.head())
 print(test_data.head())
 
 # Assuming data_clean is your DataFrame containing 'text_clean' and 'sentiment' columns
-positive_data = split_data_by_sentiment(data_clean, 1)
-negative_data = split_data_by_sentiment(data_clean, 0)
-neutral_data = split_data_by_sentiment(data_clean, 0.5)
+positive_data = split_data_by_sentiment(data_clean, 'positive')
+negative_data = split_data_by_sentiment(data_clean, 'negative')
+neutral_data = split_data_by_sentiment(data_clean, 'neutral')
 
 # Calculate word counts for tweets with positive sentiment
 word_count_positive = calculate_word_counts(positive_data)
@@ -67,14 +64,15 @@ log_likelihood_neutral = calculate_likelihood(word_count_neutral, total_words_ne
 
 
 # Calculate the log prior for tweets with positive sentiment
-log_prior_positive = calculate_log_prior(1, data_clean)
+log_prior_positive = calculate_log_prior('positive', data_clean)
 
 # Calculate the log prior for tweets with negative sentiment
-log_prior_negative = calculate_log_prior(0, data_clean)
+log_prior_negative = calculate_log_prior('negative', data_clean)
 
 # Calculate the log prior for tweets with neutral sentiment
-log_prior_neutral = calculate_log_prior(0.5, data_clean)
+log_prior_neutral = calculate_log_prior('neutral', data_clean)
 
+# Classify test tweets
 for i in range(5):
     testtext = test_data.iloc[i, 0]
     testsentiment = test_data.iloc[i, 1]

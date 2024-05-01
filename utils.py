@@ -7,6 +7,7 @@ import nltk
 from nltk.stem import PorterStemmer
 from nltk.stem import SnowballStemmer
 from nltk.tokenize import TweetTokenizer, RegexpTokenizer
+from nltk.corpus import stopwords
 import math
 from collections import defaultdict
 from sklearn.metrics import make_scorer, accuracy_score, f1_score, roc_curve, auc
@@ -160,7 +161,8 @@ def split_data_by_sentiment(data, sentiment):
     
 
 
-def preprocess_tweet(tweet, datafile):
+
+def preprocess_tweet(tweet):
     # Convert the tweet to lowercase
     tweet = tweet.lower()
 
