@@ -17,7 +17,8 @@ import warnings
 
 dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "Sample of General Customer Service Tweets": 3,
                 "General Customer Service Tweets": 4}
-input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/sample.csv': 3, 'inputs/twcs.csv': 4 }
+input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/sample.csv': 3, 'inputs/twcs.csv': 4}
+sentiment_mapping = {'negative': 0, 'neutral': 0.5, 'positive': 1}
 warnings.filterwarnings('ignore', category=MarkupResemblesLocatorWarning)
 
 
@@ -28,24 +29,36 @@ def get_key_from_value(d, val):
     return None
 
 
+def train_test_split(df, frac=0.1):
+    # get random sample
+    test = df.sample(frac=frac, axis=0)
+
+    # get everything but the test sample
+    train = df.drop(index=test.index)
+
+    return train, test
+
 
 def preproc_data(data_in, dataset_nm):
-    
     # Read in data
     data = pd.read_csv(data_in)
     data_clean = data.copy()
     print("Preprocessing {0}...".format(dataset_nm))
 
-    if data_in == 'inputs/Tweets.csv':
-        data_clean = data[data['airline_sentiment_confidence'] > 0.65]  # Confidence threshold can be changed
+    if dataset_nm == "Airline Tweets":
         data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
-        data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+        data_clean.rename(columns={'airline_sentiment': 'sentiment'}, inplace=True)
+        # test_clean = data_clean[data_clean['airline_sentiment_confidence'] <= 0.65]
+        data_clean = data_clean[data_clean['airline_sentiment_confidence'] > 0.65]
+        # data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+        # data_clean.loc[:, 'sentiment'] = data_clean['airline_sentiment'].map(sentiment_mapping)
 
     elif data_in == 'inputs/IMDBDataset.csv':
         data_clean['text_clean'] = data_clean['review'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
-        data_clean['sentiment'] = data_clean['sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
 
-    elif data_in == 'inputs/sample.csv' or data_in == 'inputs/twcs.csv': # same datasets
+        # data_clean['sentiment'] = data_clean['sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
+
+    elif data_in == 'inputs/sample.csv' or data_in == 'inputs/twcs.csv':  # same datasets
         print("Not ready")
         return None
 
@@ -53,14 +66,8 @@ def preproc_data(data_in, dataset_nm):
         print("No dataset preprocessed")
         return None
 
-
-    return data_clean.loc[:,['text_clean', 'sentiment']] # return the same 2-column dataframe for each set
-
-
-
-
-
-
+    data_clean, test_clean = train_test_split(data_clean)
+    return data_clean[['text_clean', 'sentiment']], test_clean[['text_clean', 'sentiment']]
 
 
 def tokenizeTweet(text):
@@ -215,7 +222,7 @@ def calculate_likelihood(word_count, total_words, laplacian_smoothing=1):
         # Calculate the likelihood using Laplacian smoothing formula
         # Laplacian smoothing is used to handle unseen words in training data
         # The formula is (count + smoothing) / (total_words + smoothing * vocabulary_size)
-        likelihood[word] = math.log((count + laplacian_smoothing) / (total_words + laplacian_smoothing * vocabulary_size))
+        likelihood[word] = (count + laplacian_smoothing) / (total_words + laplacian_smoothing * vocabulary_size)
 
     # Return the calculated likelihood dictionary
     return likelihood
@@ -237,14 +244,14 @@ def calculate_log_prior(sentiment, data):
 
 
 def classify_tweet_with_scores(tweet, log_likelihood_positive, log_likelihood_negative, log_likelihood_neutral,
-                               log_prior_positive, log_prior_negative, log_prior_neutral):
+                               log_prior_positive, log_prior_negative, log_prior_neutral, actual_sentiment):
     # Tokenize and preprocess the input tweet
     tokens = preprocess_tweet(tweet)
 
     # Calculate the log scores for each sentiment category
-    log_score_positive = log_prior_positive + sum([log_likelihood_positive.get(token, -math.inf) for token in tokens])
-    log_score_negative = log_prior_negative + sum([log_likelihood_negative.get(token, -math.inf) for token in tokens])
-    log_score_neutral = log_prior_neutral + sum([log_likelihood_neutral.get(token, -math.inf) for token in tokens])
+    log_score_positive = log_prior_positive + sum([log_likelihood_positive.get(token, 0) for token in tokens])
+    log_score_negative = log_prior_negative + sum([log_likelihood_negative.get(token, 0) for token in tokens])
+    log_score_neutral = log_prior_neutral + sum([log_likelihood_neutral.get(token, 0) for token in tokens])
 
     # Store the sentiment scores in a dictionary
     sentiment_scores = {
@@ -257,10 +264,10 @@ def classify_tweet_with_scores(tweet, log_likelihood_positive, log_likelihood_ne
     predicted_sentiment = max(sentiment_scores, key=sentiment_scores.get)
 
     # Print the predicted sentiment and sentiment scores
-    print("Predicted Sentiment:", predicted_sentiment)
+    print("\nTweet: {0} \nPrediction: {1} \nActual Sentiment: {2}".format(tweet, predicted_sentiment,
+                                                                        actual_sentiment))
+    # print("Predicted Sentiment:", predicted_sentiment)
     print("Sentiment Scores:")
-    for sentiment, score in sentiment_scores.items():
-        print(sentiment, ":", score)
-
+    print(sentiment_scores)
     # Return the predicted sentiment
     return predicted_sentiment

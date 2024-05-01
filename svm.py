@@ -23,8 +23,9 @@ def run_svm(data_in, dataset_nm):
 
 
     # DATA LOADING AND CLEANING
-    data_clean = utils.preproc_data(data_in, dataset_nm)
+    data_clean, test_clean = utils.preproc_data(data_in, dataset_nm)
     print("Done Preprocessing")
+    data_clean.loc[data_clean['sentiment'] == 0.65, 'sentiment'] = 1  # for now
     print(data_clean.head(3))
     train, test = train_test_split(data_clean, test_size=0.2, random_state=1)
     
@@ -55,8 +56,8 @@ def run_svm(data_in, dataset_nm):
 
     kfolds = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
     pipeline_svm = make_pipeline(vectorizer, clf)
-    #pipeline_svm = make_pipeline(vectorizer,
-     #                            SVC(probability=True, kernel="linear", class_weight="balanced"))
+    # pipeline_svm = make_pipeline(vectorizer,
+    #                            SVC(probability=True, kernel="linear", class_weight="balanced"))
     grid_svm = GridSearchCV(pipeline_svm,
                             param_grid={'calibratedclassifiercv__estimator__C': [0.01, 0.1, 1]},
                             cv=kfolds,
@@ -69,12 +70,8 @@ def run_svm(data_in, dataset_nm):
 
     print("Best grid parameter: {0}".format(grid_svm.best_params_))
     print("Best grid score: {0}".format(grid_svm.best_score_))
-
-
     print("Obtaining results...")
     utils.report_results(grid_svm.best_estimator_, X_test, y_test)
-
-
     roc_svm = utils.get_roc_curve(grid_svm.best_estimator_, X_test, y_test)
     roc_plot = utils.plot_roc_curve(roc_svm, dataset_nm)
     print("ROC Curve done")
