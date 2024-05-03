@@ -6,7 +6,7 @@ import utils
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC, LinearSVC
+from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.model_selection import GridSearchCV, learning_curve
@@ -20,7 +20,6 @@ def run_svm(data_in, dataset_nm):
     # INPUTS
     # data_in - the filepath for the selected dataset
     # dataset_nm - name of the currently selected dataset
-
 
     # DATA LOADING AND CLEANING
     data_clean, test_clean = utils.preproc_data(data_in, dataset_nm)
@@ -36,10 +35,10 @@ def run_svm(data_in, dataset_nm):
     y_train = train['sentiment']
     y_test = test['sentiment']
 
-    if data_in == 'inputs/Tweets.csv':
-        tknzr_func = utils.tokenizeTweet
-    elif data_in == 'inputs/IMDBDataset.csv':
+    if data_in == 'inputs/IMDBDataset.csv':
         tknzr_func = utils.tokenizeReview
+    else:
+        tknzr_func = utils.tokenizeTweet
 
     vectorizer = CountVectorizer(
         analyzer='word',
@@ -59,7 +58,7 @@ def run_svm(data_in, dataset_nm):
     # pipeline_svm = make_pipeline(vectorizer,
     #                            SVC(probability=True, kernel="linear", class_weight="balanced"))
     grid_svm = GridSearchCV(pipeline_svm,
-                            param_grid={'calibratedclassifiercv__estimator__C':[0.01, 0.1, 1]},
+                            param_grid={'calibratedclassifiercv__estimator__C': [0.01, 0.1, 1]},
                             cv=kfolds,
                             scoring="roc_auc_ovr",
                             verbose=0,

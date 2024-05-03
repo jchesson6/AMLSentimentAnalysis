@@ -16,10 +16,8 @@ from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, preci
 from sklearn.model_selection import learning_curve
 import warnings
 
-dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "Sample of General Customer Service Tweets": 3,
-                "General Customer Service Tweets": 4}
-input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/sample.csv': 3, 'inputs/twcs.csv': 4}
-sentiment_mapping = {'negative': 0, 'neutral': 0.5, 'positive': 1}
+dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "General Customer Tweets": 3}
+input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/TweetsLarge.csv': 3}
 warnings.filterwarnings('ignore', category=MarkupResemblesLocatorWarning)
 
 
@@ -41,28 +39,23 @@ def train_test_split(df, frac=0.1):
 
 
 def preproc_data(data_in, dataset_nm):
-    # Read in data
-    data = pd.read_csv(data_in)
-    data_clean = data.copy()
     print("Preprocessing {0}...".format(dataset_nm))
 
     if dataset_nm == "Airline Tweets":
+        data = pd.read_csv(data_in)
+        data_clean = data.copy()
         data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
         data_clean.rename(columns={'airline_sentiment': 'sentiment'}, inplace=True)
-        # test_clean = data_clean[data_clean['airline_sentiment_confidence'] <= 0.65]
         data_clean = data_clean[data_clean['airline_sentiment_confidence'] > 0.65]
-        # data_clean['sentiment'] = data_clean['airline_sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
-        # data_clean.loc[:, 'sentiment'] = data_clean['airline_sentiment'].map(sentiment_mapping)
-
-    elif data_in == 'inputs/IMDBDataset.csv':
+    elif dataset_nm == "IMDB Reviews":
+        data = pd.read_csv(data_in)
+        data_clean = data.copy()
         data_clean['text_clean'] = data_clean['review'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
-
-        # data_clean['sentiment'] = data_clean['sentiment'].apply(lambda x: 0 if x == 'negative' else 1)
-
-    elif data_in == 'inputs/sample.csv' or data_in == 'inputs/twcs.csv':  # same datasets
-        print("Not ready")
-        return None
-
+    elif dataset_nm == "General Tweets":  # same datasets
+        data = pd.read_csv(data_in, encoding_errors='replace', usecols=[0, 5], names=['sentiment', 'text'])
+        data_clean = data[['text', 'sentiment']].sample(frac=0.1, axis=0, random_state=1) # return part of large dataset
+        data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
+        data_clean['sentiment'] = data_clean['sentiment'].map({4: 'positive', 0: 'negative', 2: 'neutral'})
     else:
         print("No dataset preprocessed")
         return None

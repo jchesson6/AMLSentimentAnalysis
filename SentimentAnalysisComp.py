@@ -5,9 +5,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "Sample of General Customer Service Tweets": 3,
-                "General Customer Service Tweets": 4}
-input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/sample.csv': 3, 'inputs/twcs.csv': 4}
+
+dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "General Tweets": 3}
+input_dict = {'inputs/Tweets.csv': 1, 'inputs/IMDBDataset.csv': 2, 'inputs/TweetsLarge.csv': 3}
 pd.options.mode.copy_on_write = True
 pd.set_option('display.max_columns', None)
 np.random.seed(42)
@@ -29,8 +29,7 @@ while True:
         print("------------------------------------")
         print("1 - Airline Tweets [Multi-class] (3,342 kB)")
         print("2 - IMDB Reviews [Binary] (64,661 kB)")
-        print("3 - Sample of General Customer Service Tweets [Binary] [NOT WORKING] (17 kB)")
-        print("4 - General Customer Service Tweets [Binary] [NOT WORKING] (504,403 kB)\n")
+        print("3 - Sample of General Tweets [Multi-class] (233,207 kB)\n")
 
         in_choice = list(map(int, input(
             'Enter the datasets you wish to use in order separated by space only: ').split()))
