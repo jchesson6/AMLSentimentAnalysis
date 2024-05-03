@@ -55,7 +55,7 @@ while True:
                     print("Invalid dataset menu selection {0}. Continuing...".format(choice))
                 else:
                     print("\nRunning Naive Bayes using dataset {0}...".format(dataset_nm))
-                    NB.run_nb(data_in, dataset_nm)
+                    NB.run_sknb(data_in, dataset_nm)
             
         elif clf_choice == '3':
             print('Running SVM...')

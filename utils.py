@@ -10,6 +10,7 @@ from nltk.tokenize import TweetTokenizer, RegexpTokenizer
 from nltk.corpus import stopwords
 import math
 from collections import defaultdict
+from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import make_scorer, accuracy_score, f1_score, roc_curve, auc
 from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
 from sklearn.model_selection import learning_curve
@@ -89,15 +90,33 @@ def report_results(model, X, y):
     pred = model.predict(X)
     auc = roc_auc_score(y, pred_proba)
     acc = accuracy_score(y, pred)
-    f1 = f1_score(y, pred)
-    prec = precision_score(y, pred)
-    rec = recall_score(y, pred)
+    f1 = f1_score(y, pred, average='micro')
+    prec = precision_score(y, pred, average='micro')
+    rec = recall_score(y, pred, average='micro')
+    result = {'auc': auc, 'f1': f1, 'acc': acc, 'precision': prec, 'recall': rec}
+    print(result)
+
+
+def report_results_multi(model, X, y):
+    pred_proba = model.predict_proba(X)
+    pred = model.predict(X)
+    auc = roc_auc_score(y, pred_proba, multi_class='ovr')
+    acc = accuracy_score(y, pred)
+    f1 = f1_score(y, pred, average='micro', zero_division=np.nan)
+    prec = precision_score(y, pred, average='micro', zero_division=np.nan)
+    rec = recall_score(y, pred, average='micro', zero_division=np.nan)
     result = {'auc': auc, 'f1': f1, 'acc': acc, 'precision': prec, 'recall': rec}
     print(result)
 
 
 def get_roc_curve(model, X, y):
     pred_proba = model.predict_proba(X)[:, 1]
+    fpr, tpr, _ = roc_curve(y, pred_proba)
+    return fpr, tpr
+
+
+def get_roc_curve_multi(model, X, y):
+    pred_proba = model.predict_proba(X)
     fpr, tpr, _ = roc_curve(y, pred_proba)
     return fpr, tpr
 

@@ -1,15 +1,58 @@
 import pandas as pd
-from bs4 import BeautifulSoup
-import string
-import nltk
 import utils
-from nltk.stem import PorterStemmer
-from nltk.corpus import stopwords
 import math
-# nltk.download('punkt')
-# nltk.download('stopwords')
+from nltk.corpus import stopwords
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.naive_bayes import ComplementNB
+from sklearn.feature_extraction.text import CountVectorizer
 from utils import split_data_by_sentiment, calculate_word_counts, classify_tweet_with_scores, calculate_likelihood, calculate_log_prior
 sentiment_mapping = {'negative': 0, 'neutral': 0.5, 'positive': 1}
+
+
+def run_sknb(data_in, dataset_nm):
+    data_clean, test_clean = utils.preproc_data(data_in, dataset_nm)
+    print("Done Preprocessing")
+    print(data_clean.head(3))
+    print("\nSetting up model...")
+
+    train, test = train_test_split(data_clean, test_size=0.2, random_state=1)
+    X_train = train['text_clean'].values
+    X_test = test['text_clean'].values
+    y_train = train['sentiment']
+    y_test = test['sentiment']
+
+    if data_in == 'inputs/Tweets.csv':
+        tknzr_func = utils.tokenizeTweet
+    elif data_in == 'inputs/IMDBDataset.csv':
+        tknzr_func = utils.tokenizeReview
+
+    vectorizer = CountVectorizer(
+        analyzer='word',
+        tokenizer=tknzr_func,
+        token_pattern=None,
+        lowercase=True,
+        ngram_range=(1, 1),
+        stop_words=stopwords.words("english"))
+
+    clf = ComplementNB()
+
+
+    pipeline_nb = make_pipeline(vectorizer, clf)
+    pipeline_nb.fit(X_train, y_train)
+    pipeline_nb.score(X_test, y_test)
+    print("Obtaining results...")
+    if dataset_nm == "Airline Tweets":
+        utils.report_results_multi(pipeline_nb, X_test, y_test)
+    else:
+        utils.report_results(pipeline_nb, X_test, y_test)
+
+    num_tests = 5
+    test_data = test_clean.sample(n=num_tests, random_state=1)
+    for i in range(num_tests):
+        test_text = test_data['text_clean'].iloc[i]
+        pred = pipeline_nb.predict([test_text])
+        print("{0} -> {1}".format(test_text, pred))
 
 
 def run_nb(data_in, dataset_nm):

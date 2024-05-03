@@ -25,8 +25,8 @@ def run_svm(data_in, dataset_nm):
     # DATA LOADING AND CLEANING
     data_clean, test_clean = utils.preproc_data(data_in, dataset_nm)
     print("Done Preprocessing")
-    data_clean.loc[data_clean['sentiment'] == 0.65, 'sentiment'] = 1  # for now
-    print(data_clean.head(3))
+    # data_clean.loc[data_clean['sentiment'] == 0.65, 'sentiment'] = 1  # for now
+    print(data_clean.head(5))
     train, test = train_test_split(data_clean, test_size=0.2, random_state=1)
     
     # MACHINE LEARNING MODEL (for each dataset create a text clean and sentiment field)
@@ -51,7 +51,7 @@ def run_svm(data_in, dataset_nm):
 
     # CROSS-VALIDATION AND GRID SEARCH FOR HYPERPARAMETERS
     print("Cross-validation and grid search...")
-    svm = LinearSVC(dual="auto", class_weight="balanced", random_state=1, max_iter=10000) # can do multiclass
+    svm = LinearSVC(dual="auto", class_weight="balanced", random_state=1, max_iter=10000, multi_class="ovr")
     clf = CalibratedClassifierCV(svm)
 
     kfolds = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
@@ -59,11 +59,11 @@ def run_svm(data_in, dataset_nm):
     # pipeline_svm = make_pipeline(vectorizer,
     #                            SVC(probability=True, kernel="linear", class_weight="balanced"))
     grid_svm = GridSearchCV(pipeline_svm,
-                            param_grid={'calibratedclassifiercv__estimator__C': [0.01, 0.1, 1]},
+                            param_grid={'calibratedclassifiercv__estimator__C':[0.01, 0.1, 1]},
                             cv=kfolds,
-                            scoring="roc_auc",
-                            verbose=1,
-                            n_jobs=-1)
+                            scoring="roc_auc_ovr",
+                            verbose=0,
+                            n_jobs=-1, error_score='raise', return_train_score=True)
  
     grid_svm.fit(X_train, y_train)
     grid_svm.score(X_test, y_test)
@@ -71,18 +71,21 @@ def run_svm(data_in, dataset_nm):
     print("Best grid parameter: {0}".format(grid_svm.best_params_))
     print("Best grid score: {0}".format(grid_svm.best_score_))
     print("Obtaining results...")
-    utils.report_results(grid_svm.best_estimator_, X_test, y_test)
-    roc_svm = utils.get_roc_curve(grid_svm.best_estimator_, X_test, y_test)
-    roc_plot = utils.plot_roc_curve(roc_svm, dataset_nm)
-    print("ROC Curve done")
+    if dataset_nm == "Airline Tweets":
+        utils.report_results_multi(grid_svm.best_estimator_, X_test, y_test)
+    else:
+        utils.report_results(grid_svm.best_estimator_, X_test, y_test)
+    # roc_svm = utils.get_roc_curve_multi(grid_svm.best_estimator_, X_test, y_test)
+    # roc_plot = utils.plot_roc_curve(roc_svm, dataset_nm)
+    print("Results done")
 
     title_str = "Learning curve for " + str(dataset_nm)
 
-    train_sizes, train_scores, test_scores = \
-        learning_curve(grid_svm.best_estimator_, X_train, y_train, cv=5, n_jobs=-1,
-                       scoring="roc_auc", train_sizes=np.linspace(.1, 1.0, 10), random_state=1)
-    learning_plot = utils.plot_learning_curve(X_train, y_train, train_sizes, train_scores, test_scores,
-                                              title=title_str, ylim=(0.7, 1.01), figsize=(14, 6))
+    # train_sizes, train_scores, test_scores = \
+        # learning_curve(grid_svm.best_estimator_, X_train, y_train, cv=5, n_jobs=-1,
+                       # scoring="roc_auc", train_sizes=np.linspace(.1, 1.0, 10), random_state=1)
+    # learning_plot = utils.plot_learning_curve(X_train, y_train, train_sizes, train_scores, test_scores,
+                                              # title=title_str, ylim=(0.7, 1.01), figsize=(14, 6))
     print("Learning Curve done")
 
     # EXAMPLES
@@ -90,25 +93,24 @@ def run_svm(data_in, dataset_nm):
     print("------------------------------")
     print("TEXT -> PREDICTION")
 
-    if dataset_nm == "Airline Tweets":
-        print("flying with @united is always a great experience -> {0}".
-              format(grid_svm.predict(["flying with @united is always a great experience"])))
-        print("flying with @united is always a great experience. If you don't lose your luggage -> {0}".
-              format(
-            grid_svm.predict(["flying with @united is always a great experience. If you don't lose your luggage"])))
-        print("I love @united. Sorry, just kidding! -> {0}".
-              format(grid_svm.predict(["I love @united. Sorry, just kidding!"])))
-        print("@united very bad experience! -> {0}".
-              format(grid_svm.predict(["@united very bad experience!"])))
+    # if dataset_nm == "Airline Tweets":
+    #     print("flying with @united is always a great experience -> {0}".
+    #           format(grid_svm.predict(["flying with @united is always a great experience"])))
+    #     print("flying with @united is always a great experience. If you don't lose your luggage -> {0}".
+    #           format(
+    #         grid_svm.predict(["flying with @united is always a great experience. If you don't lose your luggage"])))
+    #     print("I love @united. Sorry, just kidding! -> {0}".
+    #           format(grid_svm.predict(["I love @united. Sorry, just kidding!"])))
+    #     print("@united very bad experience! -> {0}".
+    #           format(grid_svm.predict(["@united very bad experience!"])))
 
-    elif dataset_nm == "IMDB Reviews":
-        num_tests = 5
-        test_data = data_clean.sample(n=num_tests, random_state=1)
-        for i in range(num_tests):
-            test_text = test_data['text_clean'].iloc[i]
-            pred = grid_svm.predict([test_text])
-            print("{0} -> {1}".format(test_text, pred))
 
+    num_tests = 5
+    test_data = test_clean.sample(n=num_tests, random_state=1)
+    for i in range(num_tests):
+        test_text = test_data['text_clean'].iloc[i]
+        pred = grid_svm.predict([test_text])
+        print("{0} -> {1}".format(test_text, pred))
 
 
 # # DATA LOADING AND CLEANING
