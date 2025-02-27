@@ -7,6 +7,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
+from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.model_selection import GridSearchCV, learning_curve
@@ -78,13 +79,18 @@ def run_svm(data_in, dataset_nm):
     # roc_plot = utils.plot_roc_curve(roc_svm, dataset_nm)
     print("Results done")
 
+    # label_binarizer = LabelBinarizer().fit(y_train)
+    # y_onehot_test = label_binarizer.transform(y_test)
+    # y_score = grid_svm.predict_proba(X_test)
+
+
     title_str = "Learning curve for " + str(dataset_nm)
 
-    # train_sizes, train_scores, test_scores = \
-        # learning_curve(grid_svm.best_estimator_, X_train, y_train, cv=5, n_jobs=-1,
-                       # scoring="roc_auc", train_sizes=np.linspace(.1, 1.0, 10), random_state=1)
-    # learning_plot = utils.plot_learning_curve(X_train, y_train, train_sizes, train_scores, test_scores,
-                                              # title=title_str, ylim=(0.7, 1.01), figsize=(14, 6))
+    train_sizes, train_scores, test_scores = \
+        learning_curve(grid_svm.best_estimator_, X_train, y_train, cv=5, n_jobs=-1, error_score=np.nan,
+                       scoring='roc_auc_ovr', train_sizes=np.linspace(.1, 1.0, 10), random_state=1)
+    learning_plot = utils.plot_learning_curve(X_train, y_train, train_sizes, train_scores, test_scores,
+                                              title=title_str, ylim=(0.7, 1.01), figsize=(14, 6))
     print("Learning Curve done")
 
     # EXAMPLES

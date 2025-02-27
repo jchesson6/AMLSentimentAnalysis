@@ -11,9 +11,9 @@ from nltk.corpus import stopwords
 import math
 from collections import defaultdict
 from sklearn.preprocessing import LabelBinarizer
-from sklearn.metrics import make_scorer, accuracy_score, f1_score, roc_curve, auc
+from sklearn.metrics import make_scorer, accuracy_score, f1_score, roc_curve, balanced_accuracy_score
 from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
-from sklearn.model_selection import learning_curve
+from sklearn.model_selection import learning_curve, train_test_split
 import warnings
 
 dataset_dict = {"Airline Tweets": 1, "IMDB Reviews": 2, "General Customer Tweets": 3}
@@ -28,14 +28,14 @@ def get_key_from_value(d, val):
     return None
 
 
-def train_test_split(df, frac=0.1):
-    # get random sample
-    test = df.sample(frac=frac, axis=0)
-
-    # get everything but the test sample
-    train = df.drop(index=test.index)
-
-    return train, test
+# def train_test_split(df, frac=0.1):
+#     # get random sample
+#     test = df.sample(frac=frac, axis=0)
+#
+#     # get everything but the test sample
+#     train = df.drop(index=test.index)
+#
+#     return train, test
 
 
 def preproc_data(data_in, dataset_nm):
@@ -53,7 +53,9 @@ def preproc_data(data_in, dataset_nm):
         data_clean['text_clean'] = data_clean['review'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
     elif dataset_nm == "General Tweets":  # same datasets
         data = pd.read_csv(data_in, encoding_errors='replace', usecols=[0, 5], names=['sentiment', 'text'])
-        data_clean = data[['text', 'sentiment']].sample(frac=0.1, axis=0, random_state=1) # return part of large dataset
+        data_clean = data[['text', 'sentiment']].sample(frac=0.1, axis=0)
+        # data_clean.groupby('sentiment', group_keys=False).apply(lambda x: x.sample(frac=0.1))
+        # print(data_clean.value_counts(subset='sentiment'))
         data_clean['text_clean'] = data_clean['text'].apply(lambda x: BeautifulSoup(x, 'lxml').get_text())
         data_clean['sentiment'] = data_clean['sentiment'].map({4: 'positive', 0: 'negative', 2: 'neutral'})
     else:
@@ -65,7 +67,7 @@ def preproc_data(data_in, dataset_nm):
 
 
 def tokenizeTweet(text):
-    tknzr = TweetTokenizer(strip_handles=True, reduce_len=True,)
+    tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
     return tknzr.tokenize(text)
 
 
@@ -83,10 +85,11 @@ def report_results(model, X, y):
     pred = model.predict(X)
     auc = roc_auc_score(y, pred_proba)
     acc = accuracy_score(y, pred)
-    f1 = f1_score(y, pred, average='micro')
-    prec = precision_score(y, pred, average='micro')
-    rec = recall_score(y, pred, average='micro')
-    result = {'auc': auc, 'f1': f1, 'acc': acc, 'precision': prec, 'recall': rec}
+    bal = balanced_accuracy_score(y, pred)
+    f1 = f1_score(y, pred, pos_label='positive')
+    prec = precision_score(y, pred, pos_label='positive')
+    rec = recall_score(y, pred, pos_label='positive')
+    result = {'AUC': auc, 'f1': f1, 'accuracy': acc, 'balanced_accuracy': bal, 'precision': prec, 'recall': rec}
     print(result)
 
 
@@ -124,7 +127,7 @@ def plot_roc_curve(roc, dataset_nm):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve for %s' %dataset_nm )
+    plt.title('ROC Curve for %s' % dataset_nm)
     return plt
 
 
